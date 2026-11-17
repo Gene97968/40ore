@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>Registro ore funzionali</title>
 <style>
-  :root{--paper:#EEF0E9;--card:#F7F6F1;--line:#D6D9C9;--ink:#20302B;--soft:#58685F;--ferrari:#35618C;--vitruvio:#A6642A;--a:#35618C;--b:#4C7A5A;--fuori:#58685F;--warn:#9C3B2E}
+  :root{--paper:#EEF0E9;--card:#F7F6F1;--line:#D6D9C9;--ink:#20302B;--soft:#58685F;--ferrari:#35618C;--vitruvio:#A6642A;--a:#35618C;--b:#4C7A5A;--fuori:#58685F;--assemblea:#7A5C99;--warn:#9C3B2E}
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
   main{max-width:960px;margin:0 auto;padding:28px 20px 80px}
@@ -55,7 +55,7 @@
 <body>
 <main>
   <header><h1>Registro ore funzionali</h1><div class="soft" id="as"></div></header>
-  <p class="note">Le attività funzionali all'insegnamento (art. 44 CCNL Istruzione e Ricerca 2019-2021) sono due monte ore <b>distinti e non fungibili</b>: fino a 40 ore per il <b>Collegio dei docenti e sue articolazioni</b> (dipartimenti, commissioni, programmazione, informazione alle famiglie) e fino a 40 ore per i <b>Consigli di classe</b> (inclusi i GLO). Scrutini, esami ed eventuale formazione oltre il monte ore restano <b>fuori da entrambi i tetti</b> e sono comunque dovuti. Ogni monte ore viene diviso tra le due scuole in proporzione alle ore settimanali di servizio.</p>
+  <p class="note">Le attività funzionali all'insegnamento (art. 44 CCNL Istruzione e Ricerca 2019-2021) sono due monte ore <b>distinti e non fungibili</b>: fino a 40 ore per il <b>Collegio dei docenti e sue articolazioni</b> (dipartimenti, commissioni, programmazione, informazione alle famiglie) e fino a 40 ore per i <b>Consigli di classe</b> (inclusi i GLO). Scrutini, esami ed eventuale formazione oltre il monte ore restano <b>fuori da entrambi i tetti</b> e sono comunque dovuti. Ogni monte ore viene diviso tra le due scuole in proporzione alle ore settimanali di servizio. Le <b>assemblee sindacali</b> (fino a 10 ore annue in totale tra le due scuole) hanno un limite a parte e non rientrano nelle 40+40.</p>
   <p class="note">I dati restano <b>nel browser di questo computer</b>. Con <b>Esporta backup</b> (in fondo alla pagina) ne salvi una copia, per recuperarli o spostarli su un altro pc.</p>
 
   <h2>Riepilogo generale</h2>
@@ -70,6 +70,7 @@
       <label>Ore<input type="number" id="h" min="0.25" step="0.25" placeholder="es. 1,5" required></label>
       <label class="full">Tipo di attività<select id="t"></select></label>
       <label class="full" id="taw" hidden>Specifica il tipo di attività<input id="ta" placeholder="es. riunione straordinaria di dipartimento"></label>
+      <label class="full" id="cw" hidden>Classe<select id="c"></select></label>
       <label class="full">Note (facoltativo)<input id="n" placeholder="es. verbale n. 3, ordine del giorno..."></label>
       <label class="full"><input type="checkbox" id="pr" style="display:inline;width:auto;margin:0 8px 0 0">Solo programmata: non ancora svolta, non conta nelle ore prestate</label>
     </div>
@@ -85,8 +86,10 @@
 
   <div class="head"><h2>Ore registrate</h2><div id="fl">
     <button class="on" data-f="tutte">Tutte</button><button data-f="ferrari">Ferrari</button><button data-f="vitruvio">Vitruvio</button>
+    <select id="fc" aria-label="Filtra per classe" style="width:auto;margin:0;padding:6px 10px;font-size:13px"></select>
   </div></div>
   <div class="scroll" id="log"></div>
+  <p class="soft" id="tl"></p>
 
   <details>
     <summary>Modifica ore settimanali e monte ore · backup</summary>
@@ -96,6 +99,7 @@
         <label>Ore settimanali Vitruvio<input type="number" id="cv" min="0" step="0.5"></label>
         <label>Monte ore Collegio docenti<input type="number" id="ca" min="0" step="1"></label>
         <label>Monte ore Consigli di classe<input type="number" id="cb" min="0" step="1"></label>
+        <label>Ore annue di assemblea sindacale<input type="number" id="cs" min="0" step="1"></label>
       </div>
       <div class="bar">
         <button id="exp">Esporta backup (.json)</button>
@@ -114,21 +118,27 @@ const BLOCCHI = {
   a: { nome: 'Collegio dei docenti', lett: 'a', monte: 'monteCollegio' },
   b: { nome: 'Consigli di classe', lett: 'b', monte: 'monteConsigli' }
 };
-const TAG = { a: 'Collegio', b: 'Consigli', fuori: 'Fuori tetto' };
+const TAG = { a: 'Collegio', b: 'Consigli', fuori: 'Fuori tetto', assemblea: 'Assemblea' };
+// shortcut: elenco classi fisso nel codice, aggiornalo qui a ogni nuovo anno scolastico
+const CLASSI = {
+  ferrari: ["IAMIQ D'Annunzio", "IIAMI D'Annunzio", "IIBMIQ D'Annunzio", 'IATCG Savorito', 'IIATCG Savorito', 'IASS Savorito', 'IIANA Savorito', 'IMAQ Gragnano', 'IIMAQ Gragnano', 'IAME Gragnano', 'IIAME Gragnano', 'IAMI Gragnano', 'IIAMI Gragnano'],
+  vitruvio: ['IAa Castellammare', 'IIAa Castellammare', "IIBg Sant'Antonio"]
+};
 const TIPI = [
   ['a', 'Collegio dei docenti (fino a 40 ore)', ['Collegio dei docenti', 'Dipartimento disciplinare/interdisciplinare', 'Commissioni, gruppi di lavoro e referenti', 'Programmazione e verifica (inizio/fine anno)', 'Informazione alle famiglie (ricevimento collettivo/esiti scrutini)', 'Altro (Collegio docenti)']],
   ['b', 'Consigli di classe (fino a 40 ore)', ['Consiglio di classe', 'Consiglio di interclasse/intersezione', "GLO – Gruppo di Lavoro Operativo per l'inclusione", 'Altro (Consigli di classe)']],
-  ['fuori', 'Fuori dal tetto 40+40', ['Scrutini ed esami', 'Formazione e aggiornamento', 'Altro (fuori dal tetto)']]
+  ['fuori', 'Fuori dal tetto 40+40', ['Scrutini ed esami', 'Formazione e aggiornamento', 'Altro (fuori dal tetto)']],
+  ['assemblea', 'Assemblea sindacale (limite annuo a parte)', ['Assemblea sindacale']]
 ];
 const BLOCCO_DI = {};
 TIPI.forEach(([b, , items]) => items.forEach(t => BLOCCO_DI[t] = b));
-const D = { ferrariOre: 14, vitruvioOre: 4, monteCollegio: 40, monteConsigli: 40 };
+const D = { ferrariOre: 14, vitruvioOre: 4, monteCollegio: 40, monteConsigli: 40, monteAssemblea: 10 };
 
 const get = (k, d) => { try { return JSON.parse(localStorage.getItem(K + k)) || d; } catch (e) { return d; } };
 let cfg = { ...D, ...get('config', {}) };
 let entries = get('entries', []);
 if (!Array.isArray(entries)) entries = [];
-let flt = 'tutte';
+let flt = 'tutte', flc = '';
 
 function save() {
   try { localStorage.setItem(K + 'config', JSON.stringify(cfg)); localStorage.setItem(K + 'entries', JSON.stringify(entries)); }
@@ -143,9 +153,9 @@ const sum = (b, s) => tot(b, s, false), prog = (b, s) => tot(b, s, true);
 const fmtD = d => d.split('-').reverse().join('/');
 const quota = (b, s) => { const t = cfg.ferrariOre + cfg.vitruvioOre; return t > 0 ? cfg[BLOCCHI[b].monte] * cfg[s + 'Ore'] / t : 0; };
 
-const stats = (q, d, col) => `<div class="st"><div><b>${n(q)}</b>quota</div><div><b>${n(d)}</b>prestate</div><div><b>${n(q - d)}</b>residue</div></div>
+const stats = (q, d, col, L = ['quota', 'prestate', 'residue'], over = 'ore oltre la quota assegnata') => `<div class="st"><div><b>${n(q)}</b>${L[0]}</div><div><b>${n(d)}</b>${L[1]}</div><div><b>${n(q - d)}</b>${L[2]}</div></div>
   <div class="ruler"><i class="${d > q ? 'over' : ''}" style="width:${q > 0 ? Math.min(100, d / q * 100) : 0}%;background:var(${col})"></i></div>
-  ${d > q && q > 0 ? `<span class="badge">${n(d - q)} ore oltre la quota assegnata</span>` : ''}`;
+  ${d > q && q > 0 ? `<span class="badge">${n(d - q)} ${over}</span>` : ''}`;
 
 function render() {
   const now = new Date(), y = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
@@ -155,7 +165,8 @@ function render() {
     const m = cfg[B.monte];
     return `<div class="card" style="border-top:3px solid var(--${b})"><h3>${B.nome}</h3>
       <div class="soft">fino a ${n(m)} ore annue, art. 44 c.3 lett. ${B.lett}</div>${stats(m, sum(b), '--' + b)}</div>`;
-  }).join('');
+  }).join('') + `<div class="card" style="border-top:3px solid var(--assemblea)"><h3>Assemblea sindacale</h3>
+    <div class="soft">massimo ${n(cfg.monteAssemblea)} ore annue in totale tra le due scuole, fuori dalle 40+40</div>${stats(cfg.monteAssemblea, sum('assemblea'), '--assemblea', ['massimo', 'fruite', 'residue'], 'ore oltre il massimo')}</div>`;
   $('fuori').innerHTML = `Fuori dal tetto 40+40 (scrutini, esami, formazione): <b>${n(sum('fuori'))} ore</b> registrate finora.`;
 
   $('sc').innerHTML = Object.keys(NOME).map(s => `<div class="card" style="border-left:4px solid var(--${s})">
@@ -174,36 +185,44 @@ function render() {
     .filter(d => new Set(entries.filter(e => e.data === d).map(e => e.scuola)).size > 1).sort();
   $('cx').innerHTML = cx.length ? `<span class="badge">Stesso giorno su entrambe le scuole: ${cx.map(fmtD).join(', ')}</span>` : '';
 
-  const rows = entries.filter(e => flt === 'tutte' || e.scuola === flt)
+  const rows = entries.filter(e => (flt === 'tutte' || e.scuola === flt) && (!flc || e.classe === flc))
     .sort((a, b) => b.data.localeCompare(a.data) || b.createdAt - a.createdAt);
   $('log').innerHTML = rows.length
-    ? `<table><thead><tr><th>Data</th><th>Scuola</th><th>Monte ore</th><th>Tipo</th><th>Ore</th><th>Note</th><th></th></tr></thead><tbody>` +
+    ? `<table><thead><tr><th>Data</th><th>Scuola</th><th>Monte ore</th><th>Tipo</th><th>Classe</th><th>Ore</th><th>Note</th><th></th></tr></thead><tbody>` +
       rows.map(e => { const b = e.blocco || 'fuori', pr = e.stato === 'prevista'; return `<tr><td>${fmtD(e.data)}</td>
         <td><span class="tag" style="color:var(--${e.scuola})">${NOME[e.scuola]}</span></td>
         <td><span class="tag" style="color:var(--${b})">${TAG[b]}</span></td>
-        <td>${esc(e.tipo)}</td><td><b>${n(e.ore)}</b>${pr ? ' <span class="tag" style="color:var(--soft)">prevista</span>' : ''}</td><td>${esc(e.note || '')}</td>
+        <td>${esc(e.tipo)}</td><td>${esc(e.classe || '')}</td><td><b>${n(e.ore)}</b>${pr ? ' <span class="tag" style="color:var(--soft)">prevista</span>' : ''}</td><td>${esc(e.note || '')}</td>
         <td>${pr ? `<button class="del" data-ok="${e.id}">Segna svolta</button> ` : ''}<button class="del" data-id="${e.id}">Elimina</button></td></tr>`; }).join('') + '</tbody></table>'
-    : `<p class="soft">Nessuna ora registrata${flt === 'tutte' ? ' finora. Usa il modulo qui sopra per iniziare.' : ' per questa scuola.'}</p>`;
+    : `<p class="soft">Nessuna ora registrata${flt === 'tutte' && !flc ? ' finora. Usa il modulo qui sopra per iniziare.' : ' con questo filtro.'}</p>`;
+  const sv = rows.reduce((a, e) => a + (e.stato === 'prevista' ? 0 : e.ore), 0), pg = rows.reduce((a, e) => a + (e.stato === 'prevista' ? e.ore : 0), 0);
+  $('tl').innerHTML = rows.length ? `Nell'elenco: <b>${n(sv)} ore svolte</b>${pg ? ` e <b>${n(pg)}</b> programmate` : ''}.` : '';
 }
 
-const CF = [['cf', 'ferrariOre'], ['cv', 'vitruvioOre'], ['ca', 'monteCollegio'], ['cb', 'monteConsigli']];
+const CF = [['cf', 'ferrariOre'], ['cv', 'vitruvioOre'], ['ca', 'monteCollegio'], ['cb', 'monteConsigli'], ['cs', 'monteAssemblea']];
 const fill = () => CF.forEach(([i, k]) => $(i).value = cfg[k]);
 
 $('t').innerHTML = TIPI.map(([, l, items]) => `<optgroup label="${l}">${items.map(t => `<option>${esc(t)}</option>`).join('')}</optgroup>`).join('');
-$('t').onchange = () => $('taw').hidden = !$('t').value.startsWith('Altro');
+$('t').onchange = () => { $('taw').hidden = !$('t').value.startsWith('Altro'); $('cw').hidden = BLOCCO_DI[$('t').value] !== 'b'; };
+const fillClassi = () => $('c').innerHTML = '<option value="">Nessuna classe</option>' + CLASSI[$('s').value].map(c => `<option>${esc(c)}</option>`).join('');
+$('s').onchange = fillClassi;
+$('fc').innerHTML = '<option value="">Tutte le classi</option>' + Object.entries(CLASSI).map(([s, l]) => `<optgroup label="${NOME[s]}">${l.map(c => `<option>${esc(c)}</option>`).join('')}</optgroup>`).join('');
+$('fc').onchange = () => { flc = $('fc').value; render(); };
 
 $('f').onsubmit = ev => {
   ev.preventDefault();
-  const v = $('t').value, ore = parseFloat($('h').value);
+  const v = $('t').value, ore = parseFloat($('h').value), b = BLOCCO_DI[v], prev = $('pr').checked;
   if (!(ore > 0)) return;
+  if (b === 'assemblea' && !prev && sum(b) + ore > cfg.monteAssemblea && !confirm(`Con queste ore superi il massimo di ${n(cfg.monteAssemblea)} ore annue di assemblea sindacale. Registrarle comunque?`)) return;
   entries.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), createdAt: Date.now(),
     data: $('d').value, scuola: $('s').value, blocco: BLOCCO_DI[v],
     tipo: (v.startsWith('Altro') && $('ta').value.trim()) || v, ore, note: $('n').value.trim(),
-    stato: $('pr').checked ? 'prevista' : undefined
+    stato: prev ? 'prevista' : undefined,
+    classe: b === 'b' ? $('c').value || undefined : undefined
   });
   save(); render();
-  ev.target.reset(); $('d').value = today(); $('taw').hidden = true;
+  ev.target.reset(); $('d').value = today(); $('t').onchange(); fillClassi();
 };
 
 $('log').onclick = ev => {
@@ -258,6 +277,7 @@ $('file').onchange = ev => {
 };
 
 $('d').value = today();
+fillClassi();
 fill();
 render();
 </script>
